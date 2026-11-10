@@ -120,4 +120,17 @@ class ScholarshipCalculatorTest {
     void scholarship_low_returns0() {
         assertEquals(0, calc.scholarship(2.9, 20, false));
     }
+    
+    // ===== C: давталтын заагийн тестүүд (0 / 1 / 2+) =====
+    // 0 удаа: дээрх gpa_loop0_nullThrows ба gpa_loop0_emptyThrows
+
+    @Test
+    void gpa_loop1_singleScore_is4_0() {
+        assertEquals(4.0, calc.gpa(new double[] {95}), 0.0001);
+    }
+
+    @Test
+    void gpa_loop2plus_manyScores_is2_5() {
+        assertEquals(2.5, calc.gpa(new double[] {95, 85, 75, 65}), 0.0001);
+    }
 }
