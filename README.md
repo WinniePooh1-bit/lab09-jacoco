@@ -18,5 +18,12 @@ Happy path-ийн 5 тест бичээд `mvn verify` ажиллуулсан (r
 ## mvn -version
 
 ```
-(энд mvn -version-ийн бүтэн гаралтыг буулга)
+## B. CFG ба 100% branch хамралт
+
+scholarship() функцын CFG-г гараар зурсан:
+
+![CFG](cfg.png)
+
+Ирмэг бүрийн хажууд түүнийг дайрах тестийн нэрийг бичсэн. A-ийн тестүүд зөвхөн цөөн ирмэг хамарсан тул үлдсэн ирмэгүүдэд шинэ тест нэмсэн. Нийт XX тест шаардагдсан (results/mvn-verify-B.txt: Tests run: XX). results/jacoco-B.csv-д BRANCH_MISSED = 0, LINE_MISSED = 0 болсон.
+
 ```
