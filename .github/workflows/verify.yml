@@ -1,0 +1,82 @@
+name: Maven and JaCoCo verification
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Record tool versions
+        run: |
+          mkdir -p results
+          java -version 2>&1 | tee results/java-version.txt
+          mvn -version 2>&1 | tee results/mvn-version.txt
+
+      - name: Run clean test and JaCoCo verification
+        shell: bash
+        run: |
+          set -o pipefail
+          mvn clean verify 2>&1 | tee results/mvn-verify-final.txt
+          cp target/site/jacoco/jacoco.csv results/jacoco-final.csv
+
+      - name: Validate complete line and branch coverage
+        run: |
+          python3 - <<'PY'
+          import csv
+          from pathlib import Path
+
+          with Path("results/jacoco-final.csv").open(newline="", encoding="utf-8") as f:
+              rows = list(csv.DictReader(f))
+          target = next((row for row in rows if row["CLASS"] == "ScholarshipCalculator"), None)
+          if target is None:
+              raise SystemExit("ScholarshipCalculator is missing from the JaCoCo CSV report.")
+          for metric in ("BRANCH_MISSED", "LINE_MISSED"):
+              if int(target[metric]) != 0:
+                  raise SystemExit(f"{metric} must be 0, got {target[metric]}")
+          print("ScholarshipCalculator: 0 missed branches and 0 missed lines.")
+          PY
+
+      - name: Fill actual Java and Maven versions in README
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          readme_path = Path("README.md")
+          readme = readme_path.read_text(encoding="utf-8")
+          replacements = {
+              "<!-- JAVA_VERSION_OUTPUT -->": Path("results/java-version.txt").read_text(encoding="utf-8").rstrip(),
+              "<!-- MAVEN_VERSION_OUTPUT -->": Path("results/mvn-version.txt").read_text(encoding="utf-8").rstrip(),
+          }
+          for marker, output in replacements.items():
+              if marker not in readme:
+                  raise SystemExit(f"README marker not found: {marker}")
+              readme = readme.replace(marker, output)
+          readme_path.write_text(readme, encoding="utf-8")
+          PY
+
+      - name: Commit verified results to main
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md results/java-version.txt results/mvn-version.txt results/mvn-verify-final.txt results/jacoco-final.csv
+          if git diff --cached --quiet; then
+            echo "No generated result changes to commit."
+          else
+            git commit -m "Record clean Maven verification and JaCoCo results"
+            git push
+          fi
